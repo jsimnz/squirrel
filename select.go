@@ -13,6 +13,7 @@ type selectData struct {
 	RunWith           BaseRunner
 	Prefixes          exprs
 	Distinct          bool
+	DistinctOn        []Sqlizer
 	Columns           []Sqlizer
 	From              string
 	Joins             []string
@@ -67,6 +68,15 @@ func (d *selectData) ToSql() (sqlStr string, args []interface{}, err error) {
 
 	if d.Distinct {
 		sql.WriteString("DISTINCT ")
+	}
+
+	if len(d.DistinctOn) > 0 {
+		sql.WriteString("DISTINCT ON (")
+		args, err = appendToSql(d.DistinctOn, sql, ", ", args)
+		if err != nil {
+			return
+		}
+		sql.WriteString(") ")
 	}
 
 	if len(d.Columns) > 0 {
@@ -194,6 +204,15 @@ func (b SelectBuilder) Prefix(sql string, args ...interface{}) SelectBuilder {
 // Distinct adds a DISTINCT clause to the query.
 func (b SelectBuilder) Distinct() SelectBuilder {
 	return builder.Set(b, "Distinct", true).(SelectBuilder)
+}
+
+// DistinctOn adds a DISTINCT ON a given column clause to the query
+func (b SelectBuilder) DistinctOn(distinctColumns ...string) SelectBuilder {
+	var parts []interface{}
+	for _, str := range distinctColumns {
+		parts = append(parts, newPart(str))
+	}
+	return builder.Extend(b, "DistinctOn", parts).(SelectBuilder)
 }
 
 // Columns adds result columns to the query.
